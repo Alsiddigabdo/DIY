@@ -20,7 +20,6 @@ db.connect((err) => {
   console.log("✅ تم الاتصال بقاعدة البيانات بنجاح");
 });
 
-// إضافة معالج للأخطاء
 db.on('error', (err) => {
   console.error('خطأ في قاعدة البيانات:', err);
   if (err.code === 'PROTOCOL_CONNECTION_LOST') {
