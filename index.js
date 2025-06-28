@@ -1,7 +1,6 @@
 const express = require("express");
 const http = require("http");
 const path = require("path");
-const multer = require("multer");
 const cookieParser = require("cookie-parser");
 const session = require("express-session");
 const compression = require("compression");
@@ -41,49 +40,38 @@ const dynamicMetaMiddleware = require("./middleware/dynamicMetaMiddleware");
 
 const app = express();
 const server = http.createServer(app);
+
 // تفعيل الضغط
 app.use(compression());
+
 // تفعيل تصغير الملفات (CSS, JS)
 app.use(minify());
 app.use(expressStatusMonitor());
-// إعداد التخزين للملفات المرفوعة
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    if (file.fieldname === "avatar") {
-      cb(null, "uploads/avatars");
-    } else if (file.fieldname === "postImages") {
-      cb(null, "uploads/images");
-    } else if (file.fieldname === "messageImage") {
-      cb(null, "uploads/messages");
-    }
-  },
-  filename: (req, file, cb) => {
-    cb(null, Date.now() + "-" + file.originalname);
-  },
-});
-const upload = multer({ storage: storage });
+
 // إعدادات البرامج الوسيطة
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 app.use(
   session({
-    secret: "your_jwt_secret",
+    secret: process.env.SESSION_SECRET || "your_jwt_secret",
     resave: true,
     saveUninitialized: true,
-    cookie: { secure: process.env.NODE_ENV === 'production', httpOnly: true, maxAge: 24 * 60 * 60 * 1000 }, // 24 hours
+    cookie: { 
+      secure: process.env.NODE_ENV === 'production', 
+      httpOnly: true, 
+      maxAge: 24 * 60 * 60 * 1000 // 24 hours
+    },
   })
 );
+
 // إعداد محرك العرض
 app.set("view engine", "ejs");
 app.set("views", path.join(__dirname, "views"));
+
 // تحسين تقديم الملفات الثابتة مع تفعيل التخزين المؤقت
 app.use(express.static(path.join(__dirname, "public"), {
   maxAge: '1d', // تخزين مؤقت لمدة يوم واحد
-  etag: true
-}));
-app.use("/uploads", express.static(path.resolve(__dirname, "uploads"), {
-  maxAge: '1d',
   etag: true
 }));
 
@@ -104,10 +92,13 @@ app.use(async (req, res, next) => {
   }
   next();
 });
+
 // تطبيق Middleware عالمي للتحقق من الدور
 app.use(GlobalRoleController.setGlobalRole);
+
 // جعل صفحة المنتدى هي الصفحة الرئيسية
 app.get("/", ForumController.getAllPosts);
+
 // دمج الراوترات
 app.use("/", userRouter);
 app.use("/", changePasswordRoutes);
@@ -130,6 +121,7 @@ app.use("/admin", adminForumSettingsRoutes);
 app.use("/admin", adminJobProjectSettingsRoutes);
 app.use("/admin", adminUsersRoutes);
 app.use("/", require("./router/GlobalRoleRouter"));
+
 // مسارات ثابتة للصفحات
 app.get('/about', (req, res) => {
   // إضافة بيانات الصفحة للميتا الديناميكية
@@ -163,24 +155,34 @@ app.get("/ProjectSpace", (req, res) => {
     unreadCount: res.locals.unreadCount
   });
 });
-// جدولة حذف الإعلانات القديمة
-cron.schedule('0 0 * * *', async () => {
-  try {
-    const forumModel = require("./models/forumModel"); // تصحيح حالة الأحرف في اسم الملف
-    await forumModel.deleteOldAds();
-    console.log('Scheduled deletion of old ads completed.');
-  } catch (err) {
-    logger.error("Error in scheduled deletion:", err);
-  }
-}, {
-  scheduled: true,
-  timezone: "Asia/Riyadh"
-});
+
+// جدولة حذف الإعلانات القديمة (فقط في بيئة الإنتاج)
+if (process.env.NODE_ENV === 'production') {
+  cron.schedule('0 0 * * *', async () => {
+    try {
+      const forumModel = require("./models/forumModel");
+      await forumModel.deleteOldAds();
+      console.log('Scheduled deletion of old ads completed.');
+    } catch (err) {
+      logger.error("Error in scheduled deletion:", err);
+    }
+  }, {
+    scheduled: true,
+    timezone: "Asia/Riyadh"
+  });
+}
 
 // Middleware لمعالجة الأخطاء (يجب أن يكون في النهاية)
 app.use(errorHandler);
+
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => {
+
+// تشغيل الخادم فقط إذا لم نكن في بيئة serverless
+if (process.env.NODE_ENV !== 'production' || !process.env.VERCEL) {
+  server.listen(PORT, () => {
     console.log(`Server running on http://localhost:${PORT}`);
-});
+  });
+}
+
+module.exports = app;
 

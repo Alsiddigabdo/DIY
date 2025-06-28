@@ -1,12 +1,11 @@
 const express = require("express");
 const router = express.Router();
 const UsersControllers = require("../controllers/usersControllers");
-const multer = require("multer");
-const upload = multer({ dest: "uploads/avatars/" });
+const { uploadAvatar } = require("../config/cloudinary");
 const AuthResetController = require('../controllers/AuthResetController');
 
 // مسار تسجيل الحساب الجديد مع رفع الصورة
-router.post("/signup", upload.single("avatar"), UsersControllers.signUpControllers);
+router.post("/signup", uploadAvatar.single("avatar"), UsersControllers.signUpControllers);
 
 // زر تعديل المعلومات الشخصية
 router.post("/edit-profile", UsersControllers.updateProfileAjaxControllers);

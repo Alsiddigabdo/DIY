@@ -2,15 +2,12 @@ const mysql = require('mysql2');
 const util = require('util');
 
 const db = mysql.createConnection({
-  host: '89.163.214.37', // عنوان MaznHost
-  user: 'amlhabra_brak',
-  password: 'hSgMaUAGjPdGa7ZfRM6T',
-  database: 'amlhabra_brak',
-  port: 3306,
-  connectTimeout: 30000, // زيادة المهلة لـ 30 ثانية
-  acquireTimeout: 30000,
-  timeout: 30000,
-  reconnect: true,
+  host: process.env.DB_HOST || '89.163.214.37',
+  user: process.env.DB_USER || 'amlhabra_brak',
+  password: process.env.DB_PASSWORD || 'hSgMaUAGjPdGa7ZfRM6T',
+  database: process.env.DB_NAME || 'amlhabra_brak',
+  port: process.env.DB_PORT || 3306,
+  connectTimeout: 30000,
   charset: 'utf8mb4'
 });
 
